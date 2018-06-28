@@ -147,7 +147,7 @@ class WaypointUpdater(object):
 
 
 	if __name__ == '__main__':
-	try:
-		WaypointUpdater()
-	except rospy.ROSInterruptException:
-		rospy.logerr('Could not start waypoint updater node.')
+		try:
+			WaypointUpdater()
+		except rospy.ROSInterruptException:
+			rospy.logerr('Could not start waypoint updater node.')

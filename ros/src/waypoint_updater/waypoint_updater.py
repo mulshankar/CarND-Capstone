@@ -117,7 +117,7 @@ class WaypointUpdater(object):
 
 			stop_idx=max(self.stopline_wp_idx - closest_idx -2, 0) # subtract two way-points to ensure nose of car stops at line
 			dist=self.distance(waypoints,i,stop_idx) # calculate distance from current index to stop line index
-			vel=2.0*MAX_DECEL*dist # some deceleration rate based on distance
+			vel=math.sqrt(2.0*MAX_DECEL*dist) # some deceleration rate based on distance
 			if vel<1.0:
 				vel=0.0
 			p.twist.twist.linear.x=min(vel,wp.twist.twist.linear.x) #set way point velocity to min of calculated vs speed limit (default value)

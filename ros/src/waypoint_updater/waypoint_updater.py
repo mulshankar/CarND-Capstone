@@ -7,6 +7,7 @@ import math
 from scipy.spatial import KDTree
 from std_msgs.msg import Int32
 import numpy as np
+
 '''
 This node will waypoints from the car's current position to some `x` distance ahead.
 

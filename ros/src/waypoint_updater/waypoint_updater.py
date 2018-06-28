@@ -31,6 +31,15 @@ class WaypointUpdater(object):
 	def __init__(self):
 
 		rospy.init_node('waypoint_updater')
+		
+		# Other member variables you need below
+
+		self.pose = None
+		self.base_lane = None
+		self.waypoints_2d = None
+		self.waypoint_tree = None
+		self.loop()
+		self.stopline_wp_idx=None
 
 		# All subscribers are here
 		
@@ -41,15 +50,6 @@ class WaypointUpdater(object):
 		# Way point publisher
 
 		self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
-
-		# Other member variables you need below
-
-		self.pose = None
-		self.base_lane = None
-		self.waypoints_2d = None
-		self.waypoint_tree = None
-		self.loop()
-		self.stopline_wp_idx=None
 
 	def loop(self):
 		rate = rospy.Rate(40) # 40 Hz loop.. waypoint follower running at 30 Hz.. needs to run at least as fast 

@@ -49,6 +49,7 @@ class WaypointUpdater(object):
 		self.waypoints_2d = None
 		self.waypoint_tree = None
 		self.loop()
+		self.stopline_wp_idx=None
 
 	def loop(self):
 		rate = rospy.Rate(40) # 40 Hz loop.. waypoint follower running at 30 Hz.. needs to run at least as fast 

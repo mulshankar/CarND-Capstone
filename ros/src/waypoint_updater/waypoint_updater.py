@@ -3,11 +3,12 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
-
 import math
-
+from scipy.spatial import KDTree
+from std_msgs.msg import Int32
+import numpy as np
 '''
-This node will publish waypoints from the car's current position to some `x` distance ahead.
+This node will waypoints from the car's current position to some `x` distance ahead.
 
 As mentioned in the doc, you should ideally first implement a version which does not care
 about traffic lights or obstacles.
@@ -21,32 +22,81 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 100 # Number of waypoints we will publish. You can change this number
 
 
 class WaypointUpdater(object):
     def __init__(self):
+
         rospy.init_node('waypoint_updater')
 
+        # All subscribers are here
+        
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb)
 
-        # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-
+        # Way point publisher
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
-        # TODO: Add other member variables you need below
+        # Other member variables you need below
 
-        rospy.spin()
+        self.pose = None
+        self.frame_id = None
+        self.base_lane = None
+        self.waypoints_2d = None
+        self.waypoint_tree = None
+
+        self.loop()
+
+    def loop(self):
+        rate = rospy.Rate(40) # 40 Hz loop.. waypoint follower running at 30 Hz.. needs to run at least as fast 
+        while not rospy.is_shutdown():
+            if self.pose and self.base_lane and self.waypoint_tree:
+                closest_waypoint_idx=self.get_closest_waypoint_id()
+                self.publish_waypoints(closest_waypoint_idx)
+            rate.sleep()
 
     def pose_cb(self, msg):
-        # TODO: Implement
-        pass
+        self.pose = msg
+        
+    def waypoints_cb(self, waypoints): #setting up KDTree with waypoints
+        self.base_waypoints = waypoints
+        if not self.waypoints_2d:
+            self.waypoints_2d = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] \
+                                for waypoint in waypoints.waypoints]
+            self.waypoint_tree = KDTree(self.waypoints_2d) # setting up KDTree to identify nearest neighbour - log(n) vs N operation
 
-    def waypoints_cb(self, waypoints):
-        # TODO: Implement
-        pass
+    def get_closest_waypoint_id(self):
+        
+        x = self.pose.pose.position.x
+        y = self.pose.pose.position.x
+        
+        closest_idx = self.waypoint_tree.query([x, y],1)[1] # returns distance and index.. just getting index of coordinate
+
+        closest_coord = self.waypoints_2d[closest_idx]
+        prev_coord = self.waypoints_2d[closest_idx - 1]
+
+        # Equation for hyperplane through closest_coords
+        cl_vect = np.array(closest_coord)
+        prev_vect = np.array(prev_coord)
+        pos_vect = np.array([x, y])
+
+        val = np.dot(cl_vect - prev_vect, pos_vect - cl_vect)
+        
+        if val > 0:
+            closest_idx = (closest_idx + 1) % len(self.waypoints_2d)
+
+        return closest_idx
+
+    def publish_waypoints(self,closest_idx):
+        lane=Lane()
+        lane.header=self.base_waypoints.header
+        lane.waypoints=self.base_waypoints.waypoints[closest_idx:closest_idx+LOOKAHEAD_WPS] # python slicing automatically takes care of end of list at end of way-points
+        self.final_waypoints_pub.publish(lane)
+        
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
